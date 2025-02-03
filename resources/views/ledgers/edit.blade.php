@@ -51,8 +51,20 @@
               </div>
               @endif
 
+              <!-- 繰り返しボックス -->
+              <div>
+                <input type="checkbox" id="repeat_monthly" name="repeat_monthly" value="1" {{ $ledger->repeat_monthly ? 'checked' : '' }} onchange="toggleEndDateFields()"> Monthly
+                <input type="checkbox" id="repeat_yearly" name="repeat_yearly" value="1" {{ $ledger->repeat_yearly ? 'checked' : '' }} onchange="toggleEndDateFields()"> Yearly
+              </div>
+
+              <!-- 繰り返し終了日フィールド -->
+              <div class="mt-4" id="end_date_group" style="{{ ($ledger->repeat_monthly || $ledger->repeat_yearly) ? 'display:block;' : 'display:none;' }}">
+                <label for="end_date">Repeat Until</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ old('end_date', $ledger->end_date) }}">
+              </div>
+
               <!-- 更新ボタン -->
-              <div class="flex justify-end space-x-4">
+              <div class="flex justify-end space-x-4 mt-4">
                 <button type="submit" name="action" value="update" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600">
                   更新
                 </button>
@@ -68,4 +80,24 @@
       </div>
     </div>
   </div>
+
+  <!-- JavaScript -->
+  <script>
+    function toggleEndDateFields() {
+      var repeatMonthly = document.getElementById('repeat_monthly').checked;
+      var repeatYearly = document.getElementById('repeat_yearly').checked;
+      var endDateGroup = document.getElementById('end_date_group');
+
+      if (repeatMonthly || repeatYearly) {
+        endDateGroup.style.display = 'block';
+      } else {
+        endDateGroup.style.display = 'none';
+      }
+    }
+
+    // ページがロードされた時に繰り返しチェックボックスの状態に応じて終了日フィールドを表示
+    window.onload = function() {
+      toggleEndDateFields();
+    };
+  </script>
 </x-app-layout>

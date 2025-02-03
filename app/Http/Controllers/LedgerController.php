@@ -39,16 +39,14 @@ class LedgerController extends Controller
             'date' => 'required|date',
             'item' => 'required|string|max:255',
             'amount' => 'required|numeric',
+            'repeat_monthly' => 'nullable|boolean',  // 追加
+            'repeat_yearly' => 'nullable|boolean',   // 追加
+            'end_date' => 'nullable|date', // end_dateは繰り返しの場合にのみ必須
         ]);
 
         // 入力された日付を取得
         $startDate = Carbon::parse($request->input('date'));
-        $endDate = $request->has('end_date') ? Carbon::parse($request->input('end_date')) : null; // 繰り返し終了日（選択されていれば取得）
-
-        // endDateがstartDateより前の場合にエラーを出す
-        if ($endDate && $endDate->lt($startDate)) {
-            return back()->withErrors(['end_date' => 'The end date must be before the start date.']);
-        }
+        $endDate = $request->has('end_date') ? Carbon::parse($request->input('end_date')) : null;
 
         // 繰り返しの単位を確認（月次/年次）
         $repeatMonthly = $request->has('repeat_monthly');
@@ -59,48 +57,49 @@ class LedgerController extends Controller
         $amount = $request->input('amount');
 
         // 新しいgroupIDを生成（繰り返しレコード群に共通のIDを付与）
-        $groupID = $repeatMonthly || $repeatYearly ? uniqid('group_') : null; // 繰り返しがない場合はnull
+        $groupID = $repeatMonthly || $repeatYearly ? uniqid('group_') : null;
 
         // 毎月または毎年繰り返しレコードを作成
         if (($repeatMonthly || $repeatYearly) && $endDate) {
             if ($repeatMonthly && !$repeatYearly) {
                 // 毎月繰り返し
                 while ($startDate <= $endDate) {
-                    $this->createLedger($startDate, $item, $amount, $groupID, Auth::id());
+                    $this->createLedger($startDate, $item, $amount, $groupID, Auth::id(), $repeatMonthly, $repeatYearly, $endDate);
                     $startDate->addMonth(); // 1ヶ月後に進める
                 }
             } elseif ($repeatYearly && !$repeatMonthly) {
                 // 毎年繰り返し
                 while ($startDate <= $endDate) {
-                    $this->createLedger($startDate, $item, $amount, $groupID, Auth::id());
+                    $this->createLedger($startDate, $item, $amount, $groupID, Auth::id(), $repeatMonthly, $repeatYearly, $endDate);
                     $startDate->addYear(); // 1年後に進める
                 }
             }
         } else {
             // 繰り返しがない場合は1つのレコードを作成
-            $this->createLedger($startDate, $item, $amount, $groupID, Auth::id());
+            $this->createLedger($startDate, $item, $amount, $groupID, Auth::id(), $repeatMonthly, $repeatYearly, $endDate);
         }
 
         return redirect()->route('ledgers.index')->with('success', 'Ledger records created successfully.');
     }
 
-
     // レコード作成処理
-    private function createLedger($date, $item, $amount, $groupID, $userId)
+    private function createLedger($date, $item, $amount, $groupID, $userId, $repeatMonthly, $repeatYearly, $endDate)
     {
+        // 繰り返しがない場合もgroup_idを生成して保存
         $ledger = new Ledger();
-        $ledger->user_id = $userId; // ログインユーザーのID
-        $ledger->date = $date->toDateString(); // 日付
-        $ledger->item = $item; // アイテム
-        $ledger->amount = $amount; // 金額
-        $ledger->group_id = $groupID; // グループIDを設定
-        $ledger->save(); // 保存
+        $ledger->user_id = $userId;
+        $ledger->date = $date->toDateString();
+        $ledger->item = $item;
+        $ledger->amount = $amount;
+        $ledger->group_id = $groupID;
+        $ledger->repeat_monthly = $repeatMonthly; // 繰り返し設定を追加
+        $ledger->repeat_yearly = $repeatYearly;   // 繰り返し設定を追加
+        $ledger->end_date = $endDate ? $endDate->toDateString() : null;
+        $ledger->save();
     }
-
 
     public function show(Ledger $ledger)
     {
-        // 詳細表示するためのLedgerデータを取得
         return view('ledgers.show', compact('ledger'));
     }
 
@@ -119,6 +118,9 @@ class LedgerController extends Controller
             'date' => 'required|date',
             'item' => 'required|string|max:255',
             'amount' => 'required|numeric',
+            'repeat_monthly' => 'nullable|boolean',
+            'repeat_yearly' => 'nullable|boolean',
+            'end_date' => 'nullable|date',
         ]);
 
         // 編集方法の選択（チェックボックス）
@@ -130,19 +132,25 @@ class LedgerController extends Controller
             if ($applyToLaterDates && $ledger->group_id !== null) {
                 // 同じgroup_idを持つ、かつ当該データ日付以降のデータを更新
                 Ledger::where('user_id', Auth::id())
-                    ->where('group_id', $ledger->group_id) // group_idで絞り込み
-                    ->where('date', '>=', $ledger->date) // 当該データ日付以降のデータ
+                    ->where('group_id', $ledger->group_id)
+                    ->where('date', '>=', $ledger->date)
                     ->update([
+                        'date' => $request->date,
                         'item' => $request->item,
                         'amount' => $request->amount,
+                        'repeat_monthly' => $request->repeat_monthly,
+                        'repeat_yearly' => $request->repeat_yearly,
+                        'end_date' => $request->end_date,
                     ]);
             } else {
                 // 当該データのみ編集
                 $ledger->date = $request->date;
                 $ledger->item = $request->item;
                 $ledger->amount = $request->amount;
-                $ledger->group_id = null; // group_idをnullに設定
-                $ledger->save(); // save()を使って更新
+                $ledger->repeat_monthly = $request->repeat_monthly;
+                $ledger->repeat_yearly = $request->repeat_yearly;
+                $ledger->end_date = $request->end_date;
+                $ledger->save();
             }
         }
 
@@ -151,8 +159,8 @@ class LedgerController extends Controller
             if ($applyToLaterDates && $ledger->group_id !== null) {
                 // 同じgroup_idを持つ、かつ当該データ日付以降のデータを削除
                 Ledger::where('user_id', Auth::id())
-                    ->where('group_id', $ledger->group_id) // group_idで絞り込み
-                    ->where('date', '>=', $ledger->date) // 当該データ日付以降のデータ
+                    ->where('group_id', $ledger->group_id)
+                    ->where('date', '>=', $ledger->date)
                     ->delete();
             } else {
                 // 当該データのみ削除
@@ -161,27 +169,5 @@ class LedgerController extends Controller
         }
 
         return redirect()->route('ledgers.index')->with('success', 'Record updated successfully.');
-    }
-
-
-
-
-    public function destroy(Request $request, Ledger $ledger)
-    {
-        // // 削除方法の選択（チェックボックス）
-        // $deleteGroup = $request->has('delete_group'); // まとめて削除の場合のフラグ
-
-        // if ($deleteGroup) {
-        //     // 同じgroup_idを持ち、かつ当該データの日付以降のデータを削除
-        //     Ledger::where('user_id', Auth::id())
-        //         ->where('group_id', $ledger->group_id) // 同じgroup_idを持つデータを削除対象
-        //         ->where('date', '>=', $ledger->date)  // 当該データの日付以降のデータを削除
-        //         ->delete();
-        // } else {
-        //     // 当該データのみ削除
-        //     $ledger->delete();
-        // }
-
-        // return redirect()->route('ledgers.index')->with('success', 'Record deleted successfully');
     }
 }
