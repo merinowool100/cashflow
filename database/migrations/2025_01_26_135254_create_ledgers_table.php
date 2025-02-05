@@ -21,7 +21,7 @@ return new class extends Migration
             $table->boolean('repeat_monthly')->nullable()->after('balance');  // 毎月の繰り返し
             $table->boolean('repeat_yearly')->nullable()->after('repeat_monthly');  // 毎年の繰り返し
             $table->date('end_date')->nullable()->after('repeat_yearly');  // 繰り返しの期限
-            $table->string('group_id')->nullable()->after('end_date');
+            $table->string('group_id')->after('end_date');
             $table->timestamps();
         });
     }

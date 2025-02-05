@@ -41,20 +41,20 @@
                 @enderror
               </div>
 
-              <!-- 以降の日付をまとめて更新または削除するかのチェックボックス -->
-              @if($ledger->group_id !== null) <!-- group_idがnullでない場合のみ表示 -->
-              <div>
-                <label for="apply_to_later_dates" class="inline-flex items-center">
-                  <input type="checkbox" name="apply_to_later_dates" id="apply_to_later_dates" {{ old('apply_to_later_dates', $ledger->group_id ? 'checked' : '') }}>
-                  以降の日付のデータにも同様に適用
-                </label>
+              <!-- 繰り返しオプションが選ばれている場合に表示する -->
+              <div id="apply_to_later_dates_group" style="{{ ($ledger->repeat_monthly || $ledger->repeat_yearly) ? 'display:block;' : 'display:none;' }}">
+                <div>
+                  <label for="apply_to_later_dates" class="inline-flex items-center">
+                    <input type="checkbox" name="apply_to_later_dates" id="apply_to_later_dates" {{ old('apply_to_later_dates', $ledger->group_id ? 'checked' : '') }}>
+                    以降の日付のデータにも同様に適用
+                  </label>
+                </div>
               </div>
-              @endif
 
               <!-- 繰り返しボックス -->
               <div>
-                <input type="checkbox" id="repeat_monthly" name="repeat_monthly" value="1" {{ $ledger->repeat_monthly ? 'checked' : '' }} onchange="toggleEndDateFields()"> Monthly
-                <input type="checkbox" id="repeat_yearly" name="repeat_yearly" value="1" {{ $ledger->repeat_yearly ? 'checked' : '' }} onchange="toggleEndDateFields()"> Yearly
+                <input type="checkbox" id="repeat_monthly" name="repeat_monthly" value="1" {{ $ledger->repeat_monthly ? 'checked' : '' }} onchange="toggleApplyToLaterDates()"> Monthly
+                <input type="checkbox" id="repeat_yearly" name="repeat_yearly" value="1" {{ $ledger->repeat_yearly ? 'checked' : '' }} onchange="toggleApplyToLaterDates()"> Yearly
               </div>
 
               <!-- 繰り返し終了日フィールド -->
@@ -83,11 +83,19 @@
 
   <!-- JavaScript -->
   <script>
-    function toggleEndDateFields() {
+    function toggleApplyToLaterDates() {
       var repeatMonthly = document.getElementById('repeat_monthly').checked;
       var repeatYearly = document.getElementById('repeat_yearly').checked;
-      var endDateGroup = document.getElementById('end_date_group');
+      var applyToLaterDatesGroup = document.getElementById('apply_to_later_dates_group');
 
+      if (repeatMonthly || repeatYearly) {
+        applyToLaterDatesGroup.style.display = 'block';
+      } else {
+        applyToLaterDatesGroup.style.display = 'none';
+      }
+
+      // 繰り返し終了日フィールドも調整
+      var endDateGroup = document.getElementById('end_date_group');
       if (repeatMonthly || repeatYearly) {
         endDateGroup.style.display = 'block';
       } else {
@@ -95,9 +103,9 @@
       }
     }
 
-    // ページがロードされた時に繰り返しチェックボックスの状態に応じて終了日フィールドを表示
+    // ページがロードされた時に繰り返しチェックボックスの状態に応じて表示
     window.onload = function() {
-      toggleEndDateFields();
+      toggleApplyToLaterDates();
     };
   </script>
 </x-app-layout>

@@ -56,8 +56,8 @@ class LedgerController extends Controller
         $item = $request->input('item');
         $amount = $request->input('amount');
 
-        // 新しいgroupIDを生成（繰り返しレコード群に共通のIDを付与）
-        $groupID = $repeatMonthly || $repeatYearly ? uniqid('group_') : null;
+        // 新しいgroupIDを生成
+        $groupID = uniqid('group_');
 
         // 毎月または毎年繰り返しレコードを作成
         if (($repeatMonthly || $repeatYearly) && $endDate) {
@@ -78,6 +78,9 @@ class LedgerController extends Controller
             // 繰り返しがない場合は1つのレコードを作成
             $this->createLedger($startDate, $item, $amount, $groupID, Auth::id(), $repeatMonthly, $repeatYearly, $endDate);
         }
+
+        // 新しいレコードを保存した後にbalanceを再計算
+        Ledger::saveBalance($startDate);
 
         return redirect()->route('ledgers.index')->with('success', 'Ledger records created successfully.');
     }
@@ -121,9 +124,10 @@ class LedgerController extends Controller
             'repeat_monthly' => 'nullable|boolean',
             'repeat_yearly' => 'nullable|boolean',
             'end_date' => 'nullable|date',
+            'apply_to_later_dates' => 'nullable|boolean',  // 追加: 以降の日付への適用オプション
         ]);
 
-        // 編集方法の選択（チェックボックス）
+        // 編集方法の選択（チェックボックス） 
         $applyToLaterDates = $request->has('apply_to_later_dates'); // チェックボックスがチェックされているか
 
         // 更新アクション
@@ -167,6 +171,9 @@ class LedgerController extends Controller
                 $ledger->delete();
             }
         }
+
+        // 更新後にbalanceを再計算
+        Ledger::saveBalance($ledger->date);
 
         return redirect()->route('ledgers.index')->with('success', 'Record updated successfully.');
     }

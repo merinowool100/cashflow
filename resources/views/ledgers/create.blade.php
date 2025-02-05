@@ -69,26 +69,6 @@
   </div>
 
   <script>
-  // ページ読み込み時に、繰り返しオプションが選ばれていない場合、end_date を今日の日付に設定
-  // document.addEventListener('DOMContentLoaded', function() {
-  //   const repeatMonthlyChecked = document.getElementById('repeat_monthly').checked;
-  //   const repeatYearlyChecked = document.getElementById('repeat_yearly').checked;
-
-    // 繰り返し設定が選ばれていない場合、end_date に今日の日付を設定
-    // if (!repeatMonthlyChecked && !repeatYearlyChecked) {
-    //   const today = new Date();
-    //   const todayString = today.toISOString().split('T')[0];  // YYYY-MM-DD 形式に変換
-    //   endDateField.value = todayString;
-    // }
-
-    // 繰り返しオプションの選択状態によって end_date フィールドを表示・非表示に
-    // if (repeatMonthlyChecked || repeatYearlyChecked) {
-    //   endDateGroup.style.display = 'block';
-    // } else {
-    //   endDateGroup.style.display = 'none';
-    // }
-  // });
-
   // チェックボックスが選択された時の処理
   function toggleCheckbox(selectedCheckbox) {
     const repeatMonthlyChecked = document.getElementById('repeat_monthly').checked;
@@ -96,11 +76,7 @@
     const endDateGroup = document.getElementById('end_date_group');
 
     // 月次または年次が選択されていれば終了日を表示
-    if (repeatMonthlyChecked || repeatYearlyChecked) {
-      endDateGroup.style.display = 'block';
-    } else {
-      endDateGroup.style.display = 'none';
-    }
+    endDateGroup.style.display = (repeatMonthlyChecked || repeatYearlyChecked) ? 'block' : 'none';
 
     // 他のチェックボックスを解除
     if (selectedCheckbox.checked) {
